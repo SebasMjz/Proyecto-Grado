@@ -1,0 +1,182 @@
+﻿// 
+// custom-buttons.scss
+// Estilos personalizados para botones con hover mejorado
+//
+
+// Asegurar que los botones siempre tengan buen contraste en hover
+.btn {
+  transition: all 0.2s ease-in-out;
+  
+  // Botones primarios
+  &.btn-primary,
+  &.btn-outline-primary {
+    &:hover,
+    &:focus,
+    &:active {
+      background-color: #0a192f !important;
+      border-color: #0a192f !important;
+      color: #ffffff !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  // Botones de éxito
+  &.btn-success,
+  &.btn-outline-success {
+    &:hover,
+    &:focus,
+    &:active {
+      background-color: #047857 !important;
+      border-color: #047857 !important;
+      color: #ffffff !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+    }
+  }
+
+  // Botones de peligro
+  &.btn-danger,
+  &.btn-outline-danger {
+    &:hover,
+    &:focus,
+    &:active {
+      background-color: #dc3545 !important;
+      border-color: #dc3545 !important;
+      color: #ffffff !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+    }
+  }
+
+  // Botones de advertencia
+  &.btn-warning,
+  &.btn-outline-warning {
+    &:hover,
+    &:focus,
+    &:active {
+      background-color: #ffc107 !important;
+      border-color: #ffc107 !important;
+      color: #000000 !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(255, 193, 7, 0.3);
+    }
+  }
+
+  // Botones de información
+  &.btn-info,
+  &.btn-outline-info {
+    &:hover,
+    &:focus,
+    &:active {
+      background-color: #0369a1 !important;
+      border-color: #0369a1 !important;
+      color: #ffffff !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+    }
+  }
+
+  // Botones secundarios
+  &.btn-secondary,
+  &.btn-outline-secondary {
+    &:hover,
+    &:focus,
+    &:active {
+      background-color: #6c757d !important;
+      border-color: #6c757d !important;
+      color: #ffffff !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+    }
+  }
+
+  // Botones oscuros
+  &.btn-dark,
+  &.btn-outline-dark {
+    &:hover,
+    &:focus,
+    &:active {
+      background-color: #343a40 !important;
+      border-color: #343a40 !important;
+      color: #ffffff !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(52, 58, 64, 0.3);
+    }
+  }
+
+  // Botones claros
+  &.btn-light,
+  &.btn-outline-light {
+    &:hover,
+    &:focus,
+    &:active {
+      background-color: #f8f9fa !important;
+      border-color: #dee2e6 !important;
+      color: #212529 !important;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  // Asegurar que los botones deshabilitados no tengan efectos hover
+  &:disabled,
+  &.disabled {
+    &:hover,
+    &:focus,
+    &:active {
+      transform: none !important;
+      box-shadow: none !important;
+      cursor: not-allowed !important;
+    }
+  }
+}
+
+// Badges también necesitan buen contraste
+.badge {
+  &.bg-primary {
+    background-color: #0a192f !important;
+    color: #ffffff !important;
+  }
+
+  &.bg-success {
+    background-color: #047857 !important;
+    color: #ffffff !important;
+  }
+
+  &.bg-danger {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+  }
+
+  &.bg-warning {
+    background-color: #ffc107 !important;
+    color: #000000 !important;
+  }
+
+  &.bg-info {
+    background-color: #0369a1 !important;
+    color: #ffffff !important;
+  }
+
+  &.bg-secondary {
+    background-color: #6c757d !important;
+    color: #ffffff !important;
+  }
+
+  &.bg-dark {
+    background-color: #343a40 !important;
+    color: #ffffff !important;
+  }
+
+  &.bg-light {
+    background-color: #f8f9fa !important;
+    color: #212529 !important;
+  }
+}
+
+// Asegurar que los links en botones también tengan buen contraste
+.btn a {
+  color: inherit !important;
+  text-decoration: none !important;
+}

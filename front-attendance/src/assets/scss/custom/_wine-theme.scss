@@ -1,0 +1,405 @@
+// Variables de color principal - Tema dApp (Navy / Yellow)
+// ========================================================
+// Nota: Los nombres de clase mantienen el prefijo "wine" por compatibilidad
+// con referencias existentes; los colores subyacentes son ahora navy/yellow.
+
+// Color principal - Navy
+$primary: #0a192f !default;
+$primary-dark: #020c1b !default;
+$primary-light: #112240 !default;
+$primary-lighter: #ffc107 !default;
+$primary-lightest: #ffcd39 !default;
+
+// Gradientes principales (navy -> yellow accent)
+$gradient-primary: linear-gradient(135deg, #0a192f 0%, #112240 100%) !default;
+$gradient-primary-hover: linear-gradient(135deg, #020c1b 0%, #0a192f 100%) !default;
+$gradient-secondary: linear-gradient(135deg, #112240 0%, #ffc107 100%) !default;
+
+// Colores de estado
+$success: #28a745 !default;
+$info: #17a2b8 !default;
+$warning: #ffc107 !default;
+$danger: #dc3545 !default;
+
+// Colores neutros
+$gray-100: #f8f9fa !default;
+$gray-200: #e9ecef !default;
+$gray-300: #dee2e6 !default;
+$gray-400: #ced4da !default;
+$gray-500: #adb5bd !default;
+$gray-600: #6c757d !default;
+$gray-700: #495057 !default;
+$gray-800: #343a40 !default;
+$gray-900: #212529 !default;
+
+// Sombras neutras
+$shadow-sm: 0 .125rem .25rem rgba(0, 0, 0, .075) !default;
+$shadow: 0 .5rem 1rem rgba(0, 0, 0, .15) !default;
+$shadow-lg: 0 1rem 3rem rgba(0, 0, 0, .175) !default;
+
+// Bordes
+$border-radius: 0.5rem !default;
+$border-radius-sm: 0.25rem !default;
+$border-radius-lg: 0.75rem !default;
+$border-radius-xl: 1rem !default;
+
+// Transiciones suaves
+$transition-base: all .3s cubic-bezier(.25, .8, .25, 1) !default;
+$transition-fade: opacity .15s linear !default;
+$transition-collapse: height .35s ease !default;
+
+// Espaciado
+$spacer: 1rem !default;
+
+// Tipografía
+$font-family-sans-serif: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !default;
+$font-size-base: 1rem !default;
+$font-weight-normal: 400 !default;
+$font-weight-semibold: 600 !default;
+$font-weight-bold: 700 !default;
+
+// Animaciones personalizadas
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1000px 0;
+    }
+
+    100% {
+        background-position: 1000px 0;
+    }
+}
+
+// Clases de utilidad
+.gradient-primary {
+    background: $gradient-primary;
+}
+
+.gradient-primary-hover {
+    background: $gradient-primary-hover;
+}
+
+.text-primary-custom {
+    color: $primary !important;
+}
+
+.bg-primary-custom {
+    background-color: $primary !important;
+}
+
+.border-primary-custom {
+    border-color: $primary !important;
+}
+
+// Efectos hover mejorados
+.hover-lift {
+    transition: $transition-base;
+
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: $shadow-lg;
+    }
+}
+
+.hover-scale {
+    transition: $transition-base;
+
+    &:hover {
+        transform: scale(1.05);
+    }
+}
+
+.hover-glow {
+    transition: $transition-base;
+
+    &:hover {
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+}
+
+// Animaciones de entrada
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out;
+}
+
+.animate-slide-in-right {
+    animation: slideInRight 0.5s ease-out;
+}
+
+// Glassmorphism effect
+.glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+// Card (clase mantenida por compatibilidad)
+.card-wine-theme {
+    border: none;
+    border-radius: $border-radius-lg;
+    box-shadow: $shadow;
+    transition: $transition-base;
+    overflow: hidden;
+
+    &:hover {
+        box-shadow: $shadow-lg;
+        transform: translateY(-3px);
+    }
+
+    .card-header {
+        background: $gradient-primary;
+        color: white;
+        border: none;
+        padding: 1.25rem 1.5rem;
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: white;
+            margin-bottom: 0;
+        }
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+}
+
+// Botones (clase mantenida por compatibilidad)
+.btn-wine {
+    background: $gradient-primary;
+    border: none;
+    color: white;
+    font-weight: $font-weight-semibold;
+    padding: 0.625rem 1.5rem;
+    border-radius: $border-radius;
+    transition: $transition-base;
+    box-shadow: $shadow-sm;
+
+    &:hover {
+        background: $gradient-primary-hover;
+        transform: translateY(-2px);
+        box-shadow: $shadow;
+        color: white;
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+
+    &:focus {
+        box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.25);
+    }
+}
+
+.btn-wine-outline {
+    background: transparent;
+    border: 2px solid $primary;
+    color: $primary;
+    font-weight: $font-weight-semibold;
+    padding: 0.625rem 1.5rem;
+    border-radius: $border-radius;
+    transition: $transition-base;
+
+    &:hover {
+        background: $gradient-primary;
+        border-color: $primary;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: $shadow;
+    }
+
+    &:active {
+        transform: translateY(0);
+    }
+}
+
+// Badge
+.badge-wine {
+    background: $gradient-primary;
+    color: white;
+    padding: 0.35em 0.65em;
+    border-radius: $border-radius-sm;
+    font-weight: $font-weight-semibold;
+    font-size: 0.875em;
+}
+
+// Input
+.form-control-wine {
+    border: 2px solid $gray-300;
+    border-radius: $border-radius;
+    padding: 0.625rem 1rem;
+    transition: $transition-base;
+
+    &:focus {
+        border-color: $primary;
+        box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.15);
+        outline: none;
+    }
+}
+
+// Loading spinner
+.spinner-wine {
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-top: 3px solid $primary;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+// Progress bar
+.progress-wine {
+    height: 8px;
+    border-radius: $border-radius;
+    background-color: $gray-200;
+    overflow: hidden;
+
+    .progress-bar {
+        background: $gradient-primary;
+        transition: width 0.6s ease;
+    }
+}
+
+// Alert
+.alert-wine {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.1) 100%);
+    border-left: 4px solid $primary;
+    border-radius: $border-radius;
+    padding: 1rem 1.25rem;
+    color: $primary-dark;
+
+    .alert-heading {
+        color: $primary;
+        font-weight: $font-weight-bold;
+    }
+}
+
+// Tabla
+.table-wine {
+    thead {
+        background: $gradient-primary;
+        color: white;
+
+        th {
+            border: none;
+            font-weight: $font-weight-semibold;
+            padding: 1rem;
+        }
+    }
+
+    tbody {
+        tr {
+            transition: $transition-base;
+
+            &:hover {
+                background-color: rgba(0, 0, 0, 0.05);
+                transform: scale(1.01);
+            }
+
+            td {
+                padding: 0.875rem 1rem;
+                vertical-align: middle;
+            }
+        }
+    }
+}
+
+// Scrollbar personalizado
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: $gray-100;
+    border-radius: $border-radius;
+}
+
+::-webkit-scrollbar-thumb {
+    background: $gradient-primary;
+    border-radius: $border-radius;
+
+    &:hover {
+        background: $gradient-primary-hover;
+    }
+}
+
+// Tooltip
+.tooltip-wine {
+    .tooltip-inner {
+        background: $gradient-primary;
+        border-radius: $border-radius-sm;
+        padding: 0.5rem 0.75rem;
+        font-weight: $font-weight-semibold;
+    }
+
+    .tooltip-arrow::before {
+        border-top-color: $primary;
+    }
+}

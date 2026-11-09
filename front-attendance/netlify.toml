@@ -1,0 +1,11 @@
+[build]
+  # Directorio donde Vite genera el build
+  publish = "dist"
+  # Comando para construir la aplicación
+  command = "npm run build"
+
+[[redirects]]
+  # Redirige todas las rutas a index.html para que React Router pueda manejarlas
+  from = "/*"
+  to = "/index.html"
+  status = 200

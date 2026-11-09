@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Código QR - Evento</title>
+</head>
+
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+  <table align="center" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; margin: 0 auto;">
+    <tr>
+      <td style="padding: 30px 20px; text-align: center; background-color: #0f172a;">
+        <h1 style="color: white; font-size: 28px; margin: 0; font-weight: 600; letter-spacing: 0.5px;">{{ site_name }}
+        </h1>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="background-color: white; padding: 30px;">
+        <h2 style="color: #333;">¡Aquí tienes tu código QR para el evento!</h2>
+        <p>Hola <strong>{{ participant_name }}</strong>,</p>
+        <p style="color: #555; font-size: 16px; line-height: 1.5;">
+          Tu participación al evento <strong>"{{ event_title }}"</strong> ha sido confirmada exitosamente.
+        </p>
+
+        <!-- Información del evento -->
+        <div style="background-color: #f8f9fa; border-left: 4px solid #1d4ed8; padding: 15px; margin: 20px 0;">
+          <p style="margin: 5px 0; color: #333;">
+            <strong>📅 Evento:</strong> {{ event_title }}
+          </p>
+          <p style="margin: 5px 0; color: #333;">
+            <strong>📍 Ubicación:</strong> {{ event_location }}
+          </p>
+          <p style="margin: 5px 0; color: #333;">
+            <strong>🗓️ Fechas:</strong> {{ event_start_date }} - {{ event_end_date }}
+          </p>
+        </div>
+
+        <!-- QR Code -->
+        <div style="text-align: center; margin: 30px 0;">
+          <p style="color: #555; font-size: 16px; margin-bottom: 15px;">
+            <strong>Tu código QR:</strong>
+          </p>
+          <div
+            style="display: inline-block; padding: 15px; background-color: white; border: 2px solid #1d4ed8; border-radius: 10px;">
+            <p style="color: #555; font-size: 14px; margin-bottom: 10px;">
+              El código QR está adjunto en este correo como imagen.
+            </p>
+            <p style="color: #999; font-size: 12px;">
+              Si no ves la imagen adjunta, por favor revisa la carpeta de adjuntos de tu cliente de correo.
+            </p>
+          </div>
+        </div>
+
+        <p style="color: #555; font-size: 16px; line-height: 1.5;">
+          Por favor, <strong>presenta este código QR al ingresar al evento</strong>.
+          Puedes mostrar el QR desde este correo o imprimirlo.
+        </p>
+
+        <div
+          style="background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 5px; padding: 15px; margin: 20px 0;">
+          <p style="margin: 0; color: #856404; font-size: 14px;">
+            ⚠️ <strong>Importante:</strong> Guarda este correo o guarda el código QR en tu dispositivo para presentarlo
+            al ingresar al evento.
+          </p>
+        </div>
+
+        <p style="color: #999; font-size: 14px; margin-top: 30px;">
+          Si tienes alguna pregunta, no dudes en contactarnos.
+        </p>
+
+        <p style="color: #555; font-size: 14px; margin-top: 20px;">
+          Saludos,<br>
+          <strong>Dapp de Asistencia</strong>
+        </p>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="background-color: #f1f5f9; text-align: center; padding: 20px; font-size: 13px; color: #666;">
+        © {{ current_year }} {{ site_name }}. Todos los derechos reservados.
+      </td>
+    </tr>
+  </table>
+</body>
+
+</html>
