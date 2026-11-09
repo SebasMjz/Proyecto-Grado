@@ -8,6 +8,7 @@ from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
+from rest_framework.exceptions import ValidationError as APIValidationError
 from django.db.models import Q
 from django.db import transaction
 from django.contrib.auth.password_validation import validate_password
@@ -34,6 +35,13 @@ from checkvris.serializers import (
 from checkvris.utils import generate_activation_code, send_email_activation, send_email_password_reset, send_email_qr_code
 from checkvris.permissions import IsInstitutionalUser, CertificateAccessPermission
 from django.http import HttpResponse
+from django.core.mail import send_mail
+import logging
+from eth_account import Account
+from eth_account.messages import encode_defunct
+from web3 import Web3
+from web3.exceptions import TransactionNotFound
+from checkvris.blockchain import submit_certificate, sync_certificate, verify_certificate
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
@@ -78,6 +86,41 @@ class CurrentUserView(APIView):
 
     def get(self, request):
         return Response(UserSerializer(request.user).data)
+
+
+class WalletChallengeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.user_type != 'member':
+            raise APIValidationError('Solo participantes pueden vincular una billetera.')
+        request.user.wallet_challenge = uuid.uuid4()
+        request.user.save(update_fields=['wallet_challenge'])
+        return Response({'message': f"VRIS: vincular billetera a {request.user.email}\nNonce: {request.user.wallet_challenge}"})
+
+    def post(self, request):
+        user = request.user
+        address = request.data.get('address', '')
+        signature = request.data.get('signature', '')
+        if user.user_type != 'member' or not user.wallet_challenge or not Web3.is_address(address):
+            raise APIValidationError('Solicita un desafío e indica una billetera válida.')
+        message = f"VRIS: vincular billetera a {user.email}\nNonce: {user.wallet_challenge}"
+        try:
+            signer = Account.recover_message(encode_defunct(text=message), signature=signature)
+        except (ValueError, TypeError):
+            raise APIValidationError('La firma de la billetera no es válida.')
+        if signer.lower() != address.lower():
+            raise APIValidationError('La firma no corresponde a la billetera indicada.')
+        if User.objects.filter(wallet_address__iexact=address).exclude(pk=user.pk).exists():
+            raise APIValidationError('Esta billetera ya está vinculada a otra cuenta.')
+        if user.wallet_address and user.wallet_address.lower() != address.lower() and Certificate.objects.filter(
+            recipient_email__iexact=user.email, blockchain_status__in=['pending_chain', 'confirmed'],
+        ).exists():
+            raise APIValidationError('No se puede cambiar una billetera con certificados registrados en blockchain.')
+        user.wallet_address = Web3.to_checksum_address(address)
+        user.wallet_challenge = None
+        user.save(update_fields=['wallet_address', 'wallet_challenge'])
+        return Response({'wallet_address': user.wallet_address})
 
 class ActivateAccountView(APIView):
     permission_classes = [AllowAny]
@@ -363,6 +406,8 @@ class ParticipantViewSet(viewsets.ModelViewSet):
         event = None
         if event_id:
             event = get_object_or_404(Event, id=event_id)
+            if event.attendance_closed_at:
+                raise APIValidationError('La asistencia del evento ya está cerrada.')
 
         # Parámetro opcional para enviar correos (por defecto True - envía correos automáticamente)
         # Si la carga es muy grande (>100), se puede desactivar con send_emails=false
@@ -550,6 +595,26 @@ class EventViewSet(viewsets.ModelViewSet):
     search_fields = ["title"]
     ordering_fields = ["created_at"]
 
+    @action(detail=True, methods=['post'], url_path='close-attendance')
+    def close_attendance(self, request, pk=None):
+        event = self.get_object()
+        if not event.sessions.filter(is_active=True).exists():
+            raise APIValidationError('El evento necesita al menos una sesión activa.')
+        if not event.attendance_closed_at:
+            event.attendance_closed_at = timezone.now()
+            event.save(update_fields=['attendance_closed_at'])
+        return Response({'attendance_closed_at': event.attendance_closed_at})
+
+    def perform_update(self, serializer):
+        if self.get_object().attendance_closed_at:
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.attendance_closed_at:
+            raise APIValidationError('No se puede eliminar un evento con asistencia cerrada.')
+        instance.delete()
+
 # --- EVENT SESSION CRUD ---
 class EventSessionViewSet(viewsets.ModelViewSet):
     permission_classes = [IsInstitutionalUser]
@@ -559,6 +624,21 @@ class EventSessionViewSet(viewsets.ModelViewSet):
     filterset_fields = ['event', 'event__id', 'session_date', 'is_active']
     search_fields = ["event__title", "session_name"]
     ordering_fields = ["created_at", "session_date", "start_time"]
+
+    def perform_create(self, serializer):
+        if serializer.validated_data['event'].attendance_closed_at:
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if self.get_object().event.attendance_closed_at or serializer.validated_data.get('event', self.get_object().event).attendance_closed_at:
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.event.attendance_closed_at:
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+        instance.delete()
 
 # --- REGISTRATION CRUD ---
 class RegistrationViewSet(viewsets.ModelViewSet):
@@ -576,6 +656,21 @@ class RegistrationViewSet(viewsets.ModelViewSet):
     ]
     search_fields = ["participant__first_name", "participant__last_name", "event__title"]
     ordering_fields = ["registered_at"]
+
+    def perform_create(self, serializer):
+        if serializer.validated_data['event'].attendance_closed_at:
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if self.get_object().event.attendance_closed_at or serializer.validated_data.get('event', self.get_object().event).attendance_closed_at:
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.event.attendance_closed_at:
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+        instance.delete()
 
     def create(self, request, *args, **kwargs):
         """Override create to send QR code via email after registration"""
@@ -859,6 +954,27 @@ class AttendanceViewSet(viewsets.ModelViewSet):
     filterset_fields = ['session', 'registration', 'registration__participant']
     search_fields = ["registration__participant__first_name", "registration__participant__last_name", "session__event__title"]
     ordering_fields = ["checked_in_at"]
+
+    def perform_create(self, serializer):
+        registration = serializer.validated_data['registration']
+        session = serializer.validated_data['session']
+        if registration.event_id != session.event_id:
+            raise APIValidationError('La sesión no pertenece al evento del participante.')
+        if registration.event.attendance_closed_at:
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+        serializer.save()
+
+    def perform_update(self, serializer):
+        if self.get_object().registration.event.attendance_closed_at:
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+        if serializer.validated_data.get('registration', self.get_object().registration).event.attendance_closed_at:
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.registration.event.attendance_closed_at:
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+        instance.delete()
     
     @action(detail=False, methods=['get'], url_path='by_event/(?P<event_id>[^/.]+)')
     def by_event(self, request, event_id=None):
@@ -906,6 +1022,9 @@ class AttendanceViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        if EventSession.objects.filter(id=session_id, event__attendance_closed_at__isnull=False).exists():
+            raise APIValidationError('La asistencia del evento ya está cerrada.')
+
         # Usa el método de modelo centralizado
         attendance, created, error = Attendance.check_in(
             registration_code=registration_code,
@@ -926,19 +1045,153 @@ class AttendanceViewSet(viewsets.ModelViewSet):
         })
 
 # --- CERTIFICATE CRUD ---
-class CertificateViewSet(viewsets.ModelViewSet):
+class CertificateViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [CertificateAccessPermission]
-    queryset = Certificate.objects.select_related("registration__participant").all().order_by("-issued_at")
+    queryset = Certificate.objects.select_related("registration__participant", "registration__event").all().order_by("-issued_at")
     serializer_class = CertificateSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['registration__event']
 
     def get_queryset(self):
         queryset = super().get_queryset()
         if self.request.user.is_authenticated and self.request.user.user_type == 'member':
             return queryset.filter(
-                registration__participant__email__iexact=self.request.user.email,
+                recipient_email__iexact=self.request.user.email,
                 is_active=True,
             )
         return queryset
+
+    @action(detail=False, methods=['get'], permission_classes=[IsInstitutionalUser])
+    def eligible(self, request):
+        event_id = request.query_params.get('event')
+        if not event_id:
+            raise APIValidationError('Selecciona un evento.')
+        try:
+            event = get_object_or_404(Event, id=uuid.UUID(event_id))
+        except (ValueError, TypeError):
+            raise APIValidationError('El identificador del evento no es válido.')
+        registrations = Registration.objects.filter(
+            event=event, status=StatusRegistration.CONFIRMED,
+        ).select_related('participant').order_by('participant__last_name')
+        results = []
+        for registration in registrations:
+            if registration.is_eligible_for_certificate and not registration.has_certificate:
+                results.append({
+                    'registration_id': registration.id,
+                    'participant_name': registration.participant.full_name,
+                    'participant_email': registration.participant.email,
+                    'attended_sessions': registration.attended_sessions_count,
+                    'total_sessions': registration.total_event_sessions,
+                })
+        return Response({'attendance_closed_at': event.attendance_closed_at, 'results': results})
+
+    @action(detail=False, methods=['post'], permission_classes=[IsInstitutionalUser])
+    def issue(self, request):
+        registration_id = request.data.get('registration_id')
+        if not registration_id:
+            raise APIValidationError('Selecciona un participante elegible.')
+        try:
+            registration_id = uuid.UUID(str(registration_id))
+        except (ValueError, TypeError):
+            raise APIValidationError('El identificador del participante no es válido.')
+        with transaction.atomic():
+            registration = get_object_or_404(
+                Registration.objects.select_related('event', 'participant'), id=registration_id,
+            )
+            event = Event.objects.select_for_update().get(pk=registration.event_id)
+            if not event.attendance_closed_at:
+                raise APIValidationError('Cierra la asistencia antes de emitir certificados.')
+            if not registration.is_eligible_for_certificate:
+                raise APIValidationError('El participante debe asistir a más del 50 % de las sesiones.')
+            if registration.has_certificate:
+                raise APIValidationError('El certificado ya fue emitido.')
+            certificate, created, error = Certificate.issue_certificate(registration, issued_by=request.user)
+            if not created:
+                raise APIValidationError(error)
+            def notify_recipient():
+                try:
+                    send_mail(
+                        'Tu certificado está disponible en VRIS',
+                        f"Se emitió tu certificado de {certificate.snapshot['event_title']}. "
+                        f"Accede con {certificate.recipient_email} a {settings.FRONTEND_URL.rstrip('/')}/my-certificates. "
+                        f"Si aún no tienes cuenta, regístrate con ese mismo correo en {settings.FRONTEND_URL.rstrip('/')}/auth/sign-up.",
+                        settings.DEFAULT_FROM_EMAIL, [certificate.recipient_email],
+                    )
+                except Exception:
+                    logging.getLogger(__name__).exception('No se pudo enviar el aviso de certificado %s', certificate.id)
+            transaction.on_commit(notify_recipient)
+        return Response(self.get_serializer(certificate).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def mint(self, request, pk=None):
+        if request.user.user_type != 'member':
+            raise APIValidationError('Solo el titular puede vincular su certificado a una billetera.')
+        certificate = self.get_object()
+        if not request.user.wallet_address:
+            raise APIValidationError('Vincula una billetera antes de registrar el certificado en Sepolia.')
+        if not certificate.content_hash:
+            raise APIValidationError('Este certificado anterior no tiene datos congelados para blockchain.')
+        if certificate.blockchain_status not in ('pending_wallet', 'failed'):
+            raise APIValidationError('El certificado ya tiene una transacción. Consulta su estado.')
+        try:
+            submit_certificate(certificate, request.user.wallet_address)
+        except APIValidationError:
+            raise
+        except Exception:
+            if certificate.transaction_hash:
+                raise APIValidationError('No se pudo confirmar el envío. Consulta la transacción antes de reintentar.')
+            raise APIValidationError('La red de prueba no está disponible. Inténtalo más tarde.')
+        return Response(self.get_serializer(certificate).data)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def sync(self, request, pk=None):
+        certificate = self.get_object()
+        if not certificate.transaction_hash:
+            raise APIValidationError('Este certificado aún no tiene transacción.')
+        try:
+            sync_certificate(certificate)
+        except TransactionNotFound:
+            pass
+        except APIValidationError:
+            raise
+        except Exception:
+            raise APIValidationError('No se pudo consultar la transacción en blockchain.')
+        return Response(self.get_serializer(certificate).data)
+
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny])
+    def metadata(self, request, pk=None):
+        certificate = get_object_or_404(Certificate, id=pk, is_active=True, blockchain_status='confirmed')
+        snapshot = certificate.snapshot
+        return Response({
+            'name': f"{snapshot['event_title']} · {snapshot['participant_name']}",
+            'description': 'Certificado de participación intransferible emitido por VRIS.',
+            'external_url': f"{settings.FRONTEND_URL.rstrip('/')}/verify/{certificate.certificate_code}",
+            'attributes': [{'trait_type': 'Código', 'value': str(certificate.certificate_code)}],
+        })
+
+
+class VerifyCertificateView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request, code):
+        certificate = get_object_or_404(Certificate, certificate_code=code, is_active=True)
+        verified = False
+        if certificate.blockchain_status == 'confirmed':
+            try:
+                verified = verify_certificate(certificate)
+            except Exception:
+                return Response({'verified': False, 'detail': 'No se pudo consultar la red blockchain.'}, status=503)
+        return Response({
+            'verified': verified,
+            'status': certificate.blockchain_status,
+            'participant_name': certificate.snapshot.get('participant_name'),
+            'event_title': certificate.snapshot.get('event_title'),
+            'issued_at': certificate.snapshot.get('issued_at'),
+            'chain_id': certificate.chain_id,
+            'contract_address': certificate.contract_address,
+            'transaction_hash': certificate.transaction_hash,
+            'token_id': certificate.token_id,
+        })
 
 ## PreRegistrationViewSet eliminado
 

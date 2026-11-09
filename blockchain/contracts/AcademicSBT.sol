@@ -32,10 +32,13 @@ contract AcademicSBT is ERC721URIStorage, Ownable, IERC5192 {
     }
 
     mapping(uint256 => CertificateRecord) public certificateDetails;
+    mapping(bytes16 => uint256) public certificateToken;
+    mapping(uint256 => bytes32) public certificateHash;
 
     // Errores personalizados para optimización de consumo de gas
     error ErrTokenIsSoulbound();
     error ErrTokenDoesNotExist();
+    error ErrCertificateAlreadyMinted();
 
     constructor(address initialOwner) 
         ERC721("Univalle Academic Credential", "UAC-SBT") 
@@ -46,22 +49,29 @@ contract AcademicSBT is ERC721URIStorage, Ownable, IERC5192 {
 
     /// @notice Emite un certificado digital atado a la dirección del participante
     /// @param recipient Dirección pública (billetera) del estudiante
-    /// @param tokenURI_ Enlace hacia los metadatos inmutables en IPFS (ipfs://CID...)
+    /// @param tokenURI_ Enlace a metadatos públicos generados desde la emisión congelada
     /// @param eventCode Código del evento o seminario académico
+    /// @param certificateId UUID del certificado en Django
+    /// @param contentHash Hash SHA-256 de los datos congelados al emitir
     /// @return tokenId Identificador único del certificado emitido
     function mintCertificate(
         address recipient,
         string calldata tokenURI_,
-        string calldata eventCode
+        string calldata eventCode,
+        bytes16 certificateId,
+        bytes32 contentHash
     ) external onlyOwner returns (uint256) {
+        if (certificateToken[certificateId] != 0) revert ErrCertificateAlreadyMinted();
         uint256 tokenId = _nextTokenId++;
 
-        // Acuñación y asignación del URI de IPFS
-        _safeMint(recipient, tokenId);
-        _setTokenURI(tokenId, tokenURI_);
-
+        certificateToken[certificateId] = tokenId;
+        certificateHash[tokenId] = contentHash;
         // Bloqueo permanente del token (Propiedad Soulbound ERC-5192)
         _isLocked[tokenId] = true;
+
+        // Acuñación y asignación del URI de metadatos
+        _safeMint(recipient, tokenId);
+        _setTokenURI(tokenId, tokenURI_);
 
         // Registro de auditoría
         certificateDetails[tokenId] = CertificateRecord({
@@ -79,6 +89,10 @@ contract AcademicSBT is ERC721URIStorage, Ownable, IERC5192 {
     function locked(uint256 tokenId) external view override returns (bool) {
         if (_ownerOf(tokenId) == address(0)) revert ErrTokenDoesNotExist();
         return _isLocked[tokenId];
+    }
+
+    function supportsInterface(bytes4 interfaceId) public view override returns (bool) {
+        return interfaceId == type(IERC5192).interfaceId || super.supportsInterface(interfaceId);
     }
 
     /// @dev Sobrescritura de hooks de transferencia para impedir la cesión o venta del título

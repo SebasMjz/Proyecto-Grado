@@ -5,6 +5,7 @@ export type UserType = {
   last_name: string
   user_type: 'admin' | 'vicerrectora' | 'director_nacional' | 'staff' | 'member'
   phone?: string
+  wallet_address?: string
   is_active: boolean
   is_staff: boolean
   date_joined: string

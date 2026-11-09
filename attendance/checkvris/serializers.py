@@ -96,10 +96,10 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             "id", "email", 
             "first_name", "last_name", 
-            "user_type", "phone",
+            "user_type", "phone", "wallet_address",
             "is_active", "is_staff", "date_joined"
         ]
-        read_only_fields = ["date_joined"]
+        read_only_fields = ["date_joined", "wallet_address"]
 
 class UserListSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
@@ -138,7 +138,7 @@ class EventSerializer(serializers.ModelSerializer):
                   "registration_deadline", "start_date", "end_date", 
                   "created_at", "requires_attendance_for_certificate", "minimum_attendance_percentage",
                   "created_by", "created_by_id"]
-        read_only_fields = ["created_by", "created_at"]
+        read_only_fields = ["created_by", "created_at", "requires_attendance_for_certificate", "minimum_attendance_percentage"]
 
 
     def create(self, validated_data):
@@ -227,7 +227,9 @@ class CertificateSerializer(serializers.ModelSerializer):
         model = Certificate
         fields = [
             "id", "registration", "registration_id",
-            "issued_by", "issued_by_id", "certificate_code", "issued_at", "is_active"
+            "issued_by", "issued_by_id", "certificate_code", "issued_at", "is_active",
+            "snapshot", "content_hash", "recipient_wallet", "chain_id", "contract_address",
+            "transaction_hash", "token_id", "blockchain_status"
         ]
         read_only_fields = ["certificate_code", "issued_at", "is_active"]
 

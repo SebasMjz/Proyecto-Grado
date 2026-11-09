@@ -60,8 +60,6 @@ const EventAdd = () => {
         start_date: eventData.startDate,
         end_date: eventData.isMultiDay ? eventData.endDate : eventData.startDate,
         status: 'Borrador',
-        requires_attendance_for_certificate: false,
-        minimum_attendance_percentage: 0
       }
 
       const success = await createEvent(createEventData)

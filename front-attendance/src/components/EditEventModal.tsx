@@ -28,9 +28,7 @@ const EditEventModal = ({ eventId, show, onHide, onEventUpdated, onEventDeleted 
         status: 'Borrador' as 'Borrador' | 'Publicado' | 'Cancelado' | 'Completado',
         registration_deadline: '',
         start_date: '',
-        end_date: '',
-        requires_attendance_for_certificate: false,
-        minimum_attendance_percentage: 75
+        end_date: ''
     })
 
     useEffect(() => {
@@ -57,9 +55,7 @@ const EditEventModal = ({ eventId, show, onHide, onEventUpdated, onEventDeleted 
                     ? event.registration_deadline.split('T')[0]
                     : '',
                 start_date: event.start_date,
-                end_date: event.end_date,
-                requires_attendance_for_certificate: event.requires_attendance_for_certificate,
-                minimum_attendance_percentage: event.minimum_attendance_percentage
+                end_date: event.end_date
             })
         } catch (err: any) {
             setError(err.response?.data?.detail || 'Error al cargar el evento')
@@ -441,45 +437,8 @@ const EditEventModal = ({ eventId, show, onHide, onEventUpdated, onEventDeleted 
                                         </Col>
 
                                         <Col md={12} className="mb-3">
-                                            <Form.Group>
-                                                <Form.Check
-                                                    type="checkbox"
-                                                    name="requires_attendance_for_certificate"
-                                                    checked={formData.requires_attendance_for_certificate}
-                                                    onChange={handleInputChange}
-                                                    label={
-                                                        <span style={{ color: '#0a192f', fontWeight: '600' }}>
-                                                            <i className="ri-award-line me-2"></i>
-                                                            Requiere asistencia para certificado
-                                                        </span>
-                                                    }
-                                                    style={{ fontSize: '1rem' }}
-                                                />
-                                            </Form.Group>
+                                            <p>Para recibir un certificado se exige asistencia a más del 50 % de las sesiones activas.</p>
                                         </Col>
-
-                                        {formData.requires_attendance_for_certificate && (
-                                            <Col md={12} className="mb-4">
-                                                <Form.Group>
-                                                    <Form.Label className="fw-bold" style={{ color: '#0a192f', fontSize: '0.95rem' }}>
-                                                        <i className="ri-percent-line me-2"></i>
-                                                        Porcentaje Mínimo de Asistencia: <span style={{ color: '#ffc107', fontSize: '1.1rem' }}>{formData.minimum_attendance_percentage}%</span>
-                                                    </Form.Label>
-                                                    <Form.Range
-                                                        name="minimum_attendance_percentage"
-                                                        value={formData.minimum_attendance_percentage}
-                                                        onChange={handleInputChange}
-                                                        min="0"
-                                                        max="100"
-                                                        step="5"
-                                                        style={{
-                                                            height: '8px',
-                                                            background: `linear-gradient(to right, #ffc107 0%, #ffc107 ${formData.minimum_attendance_percentage}%, #e0e0e0 ${formData.minimum_attendance_percentage}%, #e0e0e0 100%)`
-                                                        }}
-                                                    />
-                                                </Form.Group>
-                                            </Col>
-                                        )}
                                     </Row>
 
                                     <hr style={{ margin: '2rem 0', borderColor: '#e0e0e0' }} />

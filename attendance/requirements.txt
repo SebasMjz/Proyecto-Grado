@@ -48,3 +48,4 @@ urllib3==2.5.0
 yarl==1.22.0
 zope.interface==8.0.1
 pillow==11.1.0
+web3==7.16.0

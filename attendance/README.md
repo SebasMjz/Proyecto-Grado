@@ -153,6 +153,19 @@ python manage.py runserver
 
 ## 🔌 API Endpoints
 
+### Flujo de certificados vigente
+
+1. El organizador crea evento y sesiones, confirma inscripciones y registra asistencia. El participante puede crear su cuenta después, usando **el mismo correo** de la inscripción.
+2. Solo las inscripciones confirmadas con **más del 50 % de las sesiones activas** asistidas son elegibles; exactamente la mitad no basta. `GET /attendance/certificates/eligible/?event=<uuid>` lista los elegibles.
+3. Tras revisar posibles correcciones, el organizador cierra definitivamente la asistencia con `POST /attendance/events/<uuid>/close-attendance/`. Desde ese momento no se pueden modificar sesiones, inscripciones ni asistencias del evento mediante la API.
+4. El organizador emite individualmente con `POST /attendance/certificates/issue/` y `{"registration_id": "<uuid>"}`. El servidor revalida el umbral, congela los datos y envía un aviso por correo (el envío fallido no revierte la emisión). La cuenta puede aún no existir.
+5. El titular inicia sesión y ve **solo** sus certificados en `/my-certificates`. Para recibir el SBT, vincula una billetera mediante una firma de desafío y solicita el registro en Sepolia. La cuenta emisora del backend paga el gas; el titular no necesita fondos.
+6. `POST /attendance/certificates/<uuid>/sync/` consulta la confirmación; `GET /attendance/verify/<codigo>/` verifica públicamente que el hash, titular y bloqueo del token coincidan con el contrato.
+
+La emisión en base de datos y la acuñación son estados distintos. Nunca se informa «verificado en blockchain» antes de obtener confirmación y comprobar el contrato. El SBT no se puede transferir.
+
+Para activar Sepolia, despliega el contrato de `blockchain/` y configura `BLOCKCHAIN_RPC_URL`, `BLOCKCHAIN_CHAIN_ID=11155111`, `BLOCKCHAIN_CONTRACT_ADDRESS`, `BLOCKCHAIN_PRIVATE_KEY` y un `BACKEND_URL` público con HTTPS para sus metadatos. Las claves privadas solo se configuran en el servidor. Para mainnet se necesita otro despliegue, fondos reales y configuración separada (`BLOCKCHAIN_CHAIN_ID=1`). Los tokens de Sepolia no se trasladan automáticamente a mainnet.
+
 ### **Autenticación**
 - `POST /api/auth/login/` - Iniciar sesión
 - `POST /api/auth/refresh/` - Renovar token

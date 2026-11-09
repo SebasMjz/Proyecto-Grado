@@ -48,7 +48,7 @@ A diferencia de las plataformas tradicionales de control de asistencia (como Goo
 
 ## Evidence on Hand
 
-- Contrato inteligente Solidity listo y testeado: `src/utils/contract/contrato.sol` (`AcademicSBT`, `ERC721URIStorage`, `Ownable`, `IERC5192`).
+- Contrato inteligente Solidity compilado y probado localmente: `../blockchain/contracts/AcademicSBT.sol` (`AcademicSBT`, `ERC721URIStorage`, `Ownable`, `IERC5192`).
 - Mock datasets completos con registros de participantes, hashes de transacción, IPFS CIDs y estado de minteo: `src/assets/data/mock-certificates.ts`.
 - Módulos funcionales de eventos, calendario, usuarios, dashboard y certificados en frontend.
 - API REST Django en backend `attendance` con modelos para eventos, sesiones, inscripciones y asistencias.

@@ -94,7 +94,7 @@ return {
     maxParticipants: event.capacity || 0,
     currentParticipants: 0, // Se calculará desde las inscripciones
     requirements: event.requires_attendance_for_certificate ? 
-    `Requiere ${event.minimum_attendance_percentage}% de asistencia` : undefined,
+    `Requiere más del 50% de las sesiones` : undefined,
     image: undefined, // Se puede agregar campo de imagen al backend
     attendanceChecks: 1, // Por defecto, se puede calcular desde las sesiones
     // Guardar campos originales para lógica de multi-día y estado

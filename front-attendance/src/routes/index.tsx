@@ -32,10 +32,12 @@ const NotFound = lazy(() => import('@/app/(other)/pages-404/page'))
 const SignIn = lazy(() => import('@/app/(other)/auth/sign-in/page'))
 const SignUp = lazy(() => import('@/app/(other)/auth/sign-up/page'))
 const MemberCertificates = lazy(() => import('@/app/(member)/certificates/page'))
+const MemberCertificateDetail = lazy(() => import('@/app/(member)/certificates/detail'))
 const ActivateAccount = lazy(() => import('@/app/(other)/auth/activate-account/page'))
 const ResetPassword = lazy(() => import('@/app/(other)/auth/reset-pass/page'))
 const ConfirmResetPassword = lazy(() => import('@/app/(other)/auth/reset-pass/ConfirmResetPassword'))
 const LockScreen = lazy(() => import('@/app/(other)/auth/lock-screen/page'))
+const VerifyCertificate = lazy(() => import('@/app/(other)/verify/page'))
 
 export type RoutesProps = {
   path: RouteProps['path']
@@ -110,6 +112,11 @@ const usersRoutes: RoutesProps[] = [
 
 export const authRoutes: RoutesProps[] = [
   {
+    name: 'Verificar certificado',
+    path: '/verify/:code',
+    element: <VerifyCertificate />,
+  },
+  {
     name: 'Login',
     path: '/auth/login',
     element: <SignIn />,
@@ -180,6 +187,11 @@ export const appRoutes = [
 ]
 
 export const memberRoutes: RoutesProps[] = [
+  {
+    name: 'Detalle del certificado',
+    path: '/my-certificates/:certificateId',
+    element: <MemberCertificateDetail />,
+  },
   {
     name: 'Mis certificados',
     path: '/my-certificates',

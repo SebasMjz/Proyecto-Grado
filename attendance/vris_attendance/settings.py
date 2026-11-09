@@ -212,8 +212,12 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 FRONTEND_URL = env("FRONTEND_URL")
 BACKEND_URL = env("BACKEND_URL", default="http://localhost:8000")
+BLOCKCHAIN_RPC_URL = env('BLOCKCHAIN_RPC_URL', default='')
+BLOCKCHAIN_CONTRACT_ADDRESS = env('BLOCKCHAIN_CONTRACT_ADDRESS', default='')
+BLOCKCHAIN_PRIVATE_KEY = env('BLOCKCHAIN_PRIVATE_KEY', default='')
+BLOCKCHAIN_CHAIN_ID = env.int('BLOCKCHAIN_CHAIN_ID', default=11155111)
 
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_BACKEND = env('EMAIL_BACKEND', default="django.core.mail.backends.smtp.EmailBackend")
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True

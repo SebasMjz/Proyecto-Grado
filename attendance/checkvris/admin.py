@@ -65,10 +65,53 @@ class UserAdmin(ImportExportModelAdmin, BaseUserAdmin):
     search_fields = ("email", "first_name", "last_name", "phone")
 
 
+class LockedAttendanceAdmin(admin.ModelAdmin):
+    def get_actions(self, request):
+        actions = super().get_actions(request)
+        actions.pop('delete_selected', None)
+        return actions
+
+    def has_change_permission(self, request, obj=None):
+        event = getattr(obj, 'event', None) or getattr(getattr(obj, 'registration', None), 'event', None)
+        if event and event.attendance_closed_at:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        event = getattr(obj, 'event', None) or getattr(getattr(obj, 'registration', None), 'event', None)
+        if event and event.attendance_closed_at:
+            return False
+        return super().has_delete_permission(request, obj)
+
+
+class EventAdmin(LockedAttendanceAdmin):
+    def has_change_permission(self, request, obj=None):
+        if obj and obj.attendance_closed_at:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj and obj.attendance_closed_at:
+            return False
+        return super().has_delete_permission(request, obj)
+
+
+class CertificateAdmin(LockedAttendanceAdmin):
+    def has_change_permission(self, request, obj=None):
+        if obj and obj.snapshot:
+            return False
+        return super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        if obj and obj.snapshot:
+            return False
+        return super().has_delete_permission(request, obj)
+
+
 admin.site.register(User, UserAdmin)
-admin.site.register(Participant)
-admin.site.register(Event)
-admin.site.register(EventSession)
-admin.site.register(Registration)
-admin.site.register(Attendance)
-admin.site.register(Certificate)
+admin.site.register(Participant, LockedAttendanceAdmin)
+admin.site.register(Event, EventAdmin)
+admin.site.register(EventSession, LockedAttendanceAdmin)
+admin.site.register(Registration, LockedAttendanceAdmin)
+admin.site.register(Attendance, LockedAttendanceAdmin)
+admin.site.register(Certificate, CertificateAdmin)

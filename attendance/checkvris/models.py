@@ -84,6 +84,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=100)
     user_type = models.CharField(max_length=20, choices=USER_TYPE_CHOICES, default='staff')
     phone = models.CharField(max_length=20, blank=True)
+    wallet_address = models.CharField(max_length=42, blank=True)
+    wallet_challenge = models.UUIDField(null=True, blank=True)
     
     is_active = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)
@@ -147,6 +149,11 @@ class Participant(models.Model):
         
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.email})"
+
+    def delete(self, *args, **kwargs):
+        if self.registrations.filter(event__attendance_closed_at__isnull=False).exists():
+            raise ValidationError('No se puede eliminar a un participante con asistencia cerrada.')
+        return super().delete(*args, **kwargs)
     
     @property
     def full_name(self):
@@ -167,13 +174,14 @@ class Event(models.Model):
     end_date = models.DateField()
     # Certificate settings
     requires_attendance_for_certificate = models.BooleanField(
-        default=False,
-        help_text="If True, participant must attend all sessions to receive certificate"
+        default=True,
+        help_text="El participante debe asistir a más del 50 % de las sesiones activas."
     )
     minimum_attendance_percentage = models.IntegerField(
-        default=0,
-        help_text="Minimum attendance percentage required (0-100). 0 means no requirement."
+        default=50,
+        help_text="Umbral fijo: se exige estrictamente más del 50 %."
     )
+    attendance_closed_at = models.DateTimeField(null=True, blank=True)
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -184,6 +192,16 @@ class Event(models.Model):
         
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        if self.pk and Event.objects.filter(pk=self.pk, attendance_closed_at__isnull=False).exists():
+            raise ValidationError('La asistencia del evento ya está cerrada.')
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.attendance_closed_at:
+            raise ValidationError('No se puede eliminar un evento con asistencia cerrada.')
+        return super().delete(*args, **kwargs)
     
     @property
     def is_registration_open(self):
@@ -205,6 +223,10 @@ class Event(models.Model):
         return self.registrations.filter(status=StatusRegistration.CONFIRMED).count()
 
 
+def attendance_is_closed(event_id):
+    return Event.objects.filter(pk=event_id, attendance_closed_at__isnull=False).exists()
+
+
 class EventSession(models.Model):
     """Model for individual sessions of an event (date and time)"""
     id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, primary_key=True)
@@ -223,6 +245,18 @@ class EventSession(models.Model):
     def __str__(self):
         session_label = self.session_name or f"{self.start_time.strftime('%H:%M')}"
         return f"{self.event.title} - {self.session_date} {session_label}"
+
+    def save(self, *args, **kwargs):
+        if attendance_is_closed(self.event_id) or (self.pk and EventSession.objects.filter(
+            pk=self.pk, event__attendance_closed_at__isnull=False,
+        ).exists()):
+            raise ValidationError('La asistencia del evento ya está cerrada.')
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if attendance_is_closed(self.event_id):
+            raise ValidationError('La asistencia del evento ya está cerrada.')
+        return super().delete(*args, **kwargs)
     
     def clean(self):
         """Validate that end_time is after start_time"""
@@ -266,6 +300,18 @@ class Registration(models.Model):
         
     def __str__(self):
         return f"{self.participant.full_name} - {self.event.title}"
+
+    def save(self, *args, **kwargs):
+        if attendance_is_closed(self.event_id) or (self.pk and Registration.objects.filter(
+            pk=self.pk, event__attendance_closed_at__isnull=False,
+        ).exists()):
+            raise ValidationError('La asistencia del evento ya está cerrada.')
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if attendance_is_closed(self.event_id):
+            raise ValidationError('La asistencia del evento ya está cerrada.')
+        return super().delete(*args, **kwargs)
     
     def generate_qr_code(self, format='PNG'):
         """
@@ -312,30 +358,13 @@ class Registration(models.Model):
         """
         Check if participant is eligible for certificate based on event settings
         """
-        if self.status != 'confirmed':
+        if self.status != StatusRegistration.CONFIRMED:
             return False
-        
-        # Check event-specific requirements
-        event = self.event
-        
-        # If event requires attendance
-        if event.requires_attendance_for_certificate:
-            total_sessions = self.total_event_sessions
-            attended_sessions = self.attended_sessions_count
-            
-            if total_sessions == 0:
-                return False
-            
-            # Check if minimum percentage is met
-            if event.minimum_attendance_percentage > 0:
-                attendance_percentage = (attended_sessions / total_sessions) * 100
-                return attendance_percentage >= event.minimum_attendance_percentage
-            else:
-                # Requires all sessions
-                return attended_sessions == total_sessions
-        
-        # No attendance requirement - all confirmed registrations are eligible
-        return True
+
+        total_sessions = self.total_event_sessions
+        if total_sessions == 0:
+            return False
+        return self.attendances.filter(session__event=self.event, session__is_active=True).count() * 2 > total_sessions
     
     @property
     def has_certificate(self):
@@ -391,6 +420,20 @@ class Attendance(models.Model):
         
     def __str__(self):
         return f"{self.registration.participant.full_name} - {self.session} - {self.checked_in_at}"
+
+    def save(self, *args, **kwargs):
+        if attendance_is_closed(self.registration.event_id) or attendance_is_closed(self.session.event_id) or (self.pk and Attendance.objects.filter(
+            pk=self.pk, registration__event__attendance_closed_at__isnull=False,
+        ).exists()):
+            raise ValidationError('La asistencia del evento ya está cerrada.')
+        if self.registration.event_id != self.session.event_id:
+            raise ValidationError('La sesión no pertenece al evento del participante.')
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if attendance_is_closed(self.registration.event_id):
+            raise ValidationError('La asistencia del evento ya está cerrada.')
+        return super().delete(*args, **kwargs)
     
     @classmethod
     def check_in(cls, registration_code, session_id, checked_in_by=None, location='', notes=''):
@@ -464,12 +507,41 @@ class Certificate(models.Model):
         related_name='issued_certificates'
     )
     is_active = models.BooleanField(default=True)
+    recipient_email = models.EmailField(blank=True)
+    snapshot = models.JSONField(default=dict, blank=True)
+    content_hash = models.CharField(max_length=64, blank=True)
+    recipient_wallet = models.CharField(max_length=42, blank=True)
+    chain_id = models.PositiveIntegerField(null=True, blank=True)
+    contract_address = models.CharField(max_length=42, blank=True)
+    transaction_hash = models.CharField(max_length=66, blank=True)
+    token_id = models.PositiveBigIntegerField(null=True, blank=True)
+    blockchain_status = models.CharField(max_length=20, default='pending_wallet', choices=[
+        ('legacy', 'Emisión previa sin respaldo blockchain'),
+        ('pending_wallet', 'Sin billetera'),
+        ('pending_chain', 'Pendiente en blockchain'),
+        ('confirmed', 'Confirmado en blockchain'),
+        ('failed', 'Error en blockchain'),
+    ])
     
     class Meta:
         ordering = ['-issued_at']
         
     def __str__(self):
         return f"Certificate - {self.registration.participant.full_name} - {self.registration.event.title}"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            original = Certificate.objects.filter(pk=self.pk).first()
+            if original and original.snapshot and any(getattr(self, field) != getattr(original, field) for field in (
+                'registration_id', 'recipient_email', 'snapshot', 'content_hash', 'certificate_code', 'issued_at',
+            )):
+                raise ValidationError('Los datos del certificado emitido no se pueden modificar.')
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        if self.snapshot:
+            raise ValidationError('Un certificado emitido no se puede eliminar.')
+        return super().delete(*args, **kwargs)
     
     @property
     def verification_url(self):
@@ -483,29 +555,12 @@ class Certificate(models.Model):
         Checks registration status and event-specific requirements
         Returns tuple: (eligible: bool, message: str)
         """
-        if registration.status != 'confirmed':
+        if registration.status != StatusRegistration.CONFIRMED:
             return (False, "Registration is not confirmed")
-        
-        event = registration.event
-        
-        # Check if event requires attendance
-        if event.requires_attendance_for_certificate:
-            total_sessions = registration.total_event_sessions
-            attended_sessions = registration.attended_sessions_count
-            
-            if total_sessions == 0:
-                return (False, "Event has no sessions")
-            
-            # Check minimum percentage requirement
-            if event.minimum_attendance_percentage > 0:
-                attendance_percentage = (attended_sessions / total_sessions) * 100
-                if attendance_percentage < event.minimum_attendance_percentage:
-                    return (False, f"Minimum attendance not met. Attended: {attended_sessions}/{total_sessions} ({attendance_percentage:.1f}%). Required: {event.minimum_attendance_percentage}%")
-            else:
-                # Requires all sessions
-                if attended_sessions < total_sessions:
-                    return (False, f"Must attend all sessions. Attended: {attended_sessions}/{total_sessions}")
-        
+
+        if not registration.is_eligible_for_certificate:
+            return (False, "Debe asistir a más del 50 % de las sesiones activas del evento.")
+
         return (True, "Eligible for certificate")
     
     @classmethod
@@ -517,6 +572,9 @@ class Certificate(models.Model):
         # Check if certificate already exists
         if hasattr(registration, 'certificate'):
             return (registration.certificate, False, "Certificate already issued")
+
+        if not attendance_is_closed(registration.event_id):
+            return (None, False, "Close attendance before issuing certificates")
         
         # Check eligibility
         eligible, message = cls.can_issue_certificate(registration)
@@ -527,8 +585,26 @@ class Certificate(models.Model):
         # Create certificate
         certificate = cls.objects.create(
             registration=registration,
-            issued_by=issued_by
+            issued_by=issued_by,
+            recipient_email=registration.participant.email,
         )
+
+        import hashlib
+        import json
+        certificate.snapshot = {
+            'certificate_code': str(certificate.certificate_code),
+            'participant_name': registration.participant.full_name,
+            'event_title': registration.event.title,
+            'event_start_date': registration.event.start_date.isoformat(),
+            'event_end_date': registration.event.end_date.isoformat(),
+            'issued_at': certificate.issued_at.isoformat(),
+            'attended_sessions': registration.attended_sessions_count,
+            'total_sessions': registration.total_event_sessions,
+        }
+        certificate.content_hash = hashlib.sha256(
+            json.dumps(certificate.snapshot, sort_keys=True, separators=(',', ':'), ensure_ascii=False).encode('utf-8')
+        ).hexdigest()
+        certificate.save(update_fields=['snapshot', 'content_hash'])
         
         return (certificate, True, None)
     

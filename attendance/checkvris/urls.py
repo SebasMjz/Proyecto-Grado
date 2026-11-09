@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 from checkvris.views import (
-    LoginView, PublicSignUpView, CurrentUserView, ActivateAccountView, ResendActivationCodeView,
+    LoginView, PublicSignUpView, CurrentUserView, WalletChallengeView, VerifyCertificateView, ActivateAccountView, ResendActivationCodeView,
     RequestPasswordResetView, ConfirmPasswordResetView,
     EventViewSet, EventSessionViewSet, ParticipantViewSet,
     RegistrationViewSet, AttendanceViewSet, CertificateViewSet, UserViewSet
@@ -25,6 +25,8 @@ urlpatterns = [
     path('login/', LoginView.as_view(), name='login'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('me/', CurrentUserView.as_view(), name='current-user'),
+    path('me/wallet-challenge/', WalletChallengeView.as_view(), name='wallet-challenge'),
+    path('verify/<uuid:code>/', VerifyCertificateView.as_view(), name='verify-certificate'),
     path('sign-up/', PublicSignUpView.as_view(), name='sign-up'),
     path('activate-account/', ActivateAccountView.as_view(), name='activate-account'),
     path('resend-activation/', ResendActivationCodeView.as_view(), name='resend-activation'),
